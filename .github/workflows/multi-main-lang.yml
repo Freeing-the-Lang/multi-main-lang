@@ -1,0 +1,99 @@
+name: "multi-main-lang — 3OS Build + C++ Transpile + ProofLedger"
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: multi-main-lang-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-3os:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Normalize Line Endings
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - name: Setup C++ Environment
+        if: runner.os != 'Windows'
+        run: sudo apt-get update || true
+
+      - name: Generate Transpiled C++ (Mock)
+        shell: bash
+        run: |
+          mkdir -p dist
+          echo '// transpiled C++ from multi-main-lang' > dist/out.cpp
+          echo 'int main(){ return 0; }' >> dist/out.cpp
+
+      - name: Build Executable
+        shell: bash
+        run: |
+          cd dist
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            g++ out.cpp -o out.exe
+          else
+            g++ out.cpp -o out
+          fi
+
+      - name: Generate ProofLedger
+        shell: bash
+        run: |
+          cd dist
+          echo "ProofLedger for multi-main-lang" > proofledger.txt
+          echo "OS: ${{ runner.os }}" >> proofledger.txt
+          echo "Commit: ${{ github.sha }}" >> proofledger.txt
+          echo "Timestamp: $(date)" >> proofledger.txt
+          echo "" >> proofledger.txt
+          sha256sum out.cpp >> proofledger.txt 2>/dev/null || true
+          sha256sum out >> proofledger.txt 2>/dev/null || true
+          sha256sum out.exe >> proofledger.txt 2>/dev/null || true
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ runner.os }}
+          path: dist/*
+
+  release:
+    needs: build-3os
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Release Tag
+        id: tag
+        run: |
+          VERSION="v1.0.$(date +%Y%m%d%H%M%S)"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          git tag $VERSION
+          git push origin $VERSION
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: releases
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.version }}
+          files: releases/**/*

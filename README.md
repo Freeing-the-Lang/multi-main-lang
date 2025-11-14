@@ -1,3 +1,27 @@
+### 🧽 multi-main-lang → Spongelang → MultiMain-OS 연동 구조
+multi-main-lang은 여러 개의 `main` 블록을 가질 수 있는 언어입니다.
+
+이 언어는 스스로 실행하지 않으며,  
+작성된 모든 main은 Spongelang에 의해 **의미 노드(MeaningNode)** 로 흡수됩니다.
+
+Spongelang은 이러한 main들을 스폰지처럼 모두 받아들여  
+하나의 MeaningGraph로 병합합니다.
+
+그 후 MultiMain-OS가 이 그래프를 실행하여  
+프로그램이 실제로 동작하게 됩니다.
+
+즉 전체 실행 흐름은 다음과 같습니다:
+
+multi-main-lang → Spongify (Spongelang) → MeaningGraph → MultiMain-OS Runtime
+
+이 구조 덕분에 multi-main-lang은  
+여러 main을 가진 프로그램을 자연스럽게 표현할 수 있습니다.
+
+
+---
+
+
+
 여러 개의 main()을 기본으로 가진 새로운 언어
 
 
